@@ -4,6 +4,15 @@
 @tailwind components;
 @tailwind utilities;
 
+section[id] {
+  scroll-margin-top: 90px;
+}
+
+.text-\[9px\],
+.text-\[10px\] {
+  font-size: 12px;
+}
+
 :root {
   color: #e6edf3;
   background: #071827;
@@ -20,7 +29,6 @@ html {
 
 body {
   margin: 0;
-  min-width: 320px;
   background:
     radial-gradient(ellipse at 75% -10%, rgba(15, 118, 110, 0.22), transparent 38%),
     linear-gradient(180deg, #071827 0%, #0f172a 100%);
@@ -157,7 +165,7 @@ svg {
   animation: hero-reveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.36s both;
 }
 
-.grid-bg .mt-20.grid {
+.grid-bg .mt-12.grid {
   animation: hero-reveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.48s both;
 }
 
@@ -171,15 +179,13 @@ main > section:not(.grid-bg) {
 
 #implementations article,
 #capabilities article,
-#learning article,
-#roadmap article {
+#learning article {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 #implementations article:hover,
 #capabilities article:hover,
-#learning article:hover,
-#roadmap article:hover {
+#learning article:hover {
   transform: translateY(-6px);
   box-shadow: 0 18px 35px rgba(15, 23, 42, 0.12);
 }
@@ -196,56 +202,6 @@ main > section:not(.grid-bg) {
 .focus-ring:focus-visible {
   outline: 3px solid #2dd4bf;
   outline-offset: 3px;
-}
-
-.roadmap-card {
-  border-color: rgba(148, 163, 184, 0.2);
-  color: #dbeafe;
-  background: rgba(15, 23, 42, 0.92);
-}
-
-.roadmap-marker {
-  background: #0f766e;
-}
-
-.roadmap-coral {
-  border-color: #fca5a5;
-}
-
-.roadmap-coral .roadmap-marker {
-  background: #dc2626;
-}
-
-.roadmap-green {
-  border-color: #86efac;
-}
-
-.roadmap-green .roadmap-marker {
-  background: #15803d;
-}
-
-.roadmap-blue {
-  border-color: #93c5fd;
-}
-
-.roadmap-blue .roadmap-marker {
-  background: #2563eb;
-}
-
-.roadmap-purple {
-  border-color: #c4b5fd;
-}
-
-.roadmap-purple .roadmap-marker {
-  background: #7c3aed;
-}
-
-.roadmap-amber {
-  border-color: #fcd34d;
-}
-
-.roadmap-amber .roadmap-marker {
-  background: #d97706;
 }
 
 @keyframes hero-reveal {
@@ -286,17 +242,7 @@ main > section:not(.grid-bg) {
   50% { transform: translateY(-9rem); opacity: 1; }
 }
 
-@keyframes grid-drift {
-  from {
-    background-position: 0 0, 0 0;
-  }
-  to {
-    background-position: 38px 38px, 38px 38px;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .hero-grid,
   .hero-reveal,
   .header-enter,
   .section-reveal,
@@ -311,15 +257,13 @@ main > section:not(.grid-bg) {
 
   #implementations article,
   #capabilities article,
-  #learning article,
-  #roadmap article {
+  #learning article {
     transition: none;
   }
 
   #implementations article:hover,
   #capabilities article:hover,
-  #learning article:hover,
-  #roadmap article:hover {
+  #learning article:hover {
     transform: none;
     box-shadow: none;
   }

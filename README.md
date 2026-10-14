@@ -21,5 +21,11 @@ npm run preview
 ## Project structure
 
 - `src/` — React application and styles
-- `public/` — static files served as-is
+- `public/` — static files served as-is, including the downloadable résumé
 - `index.html` — Vite application entry point
+
+## Deployment
+
+Deploy the production build to Netlify to enable the contact form. The form is
+configured for Netlify Forms; submissions from the local Vite server are not
+stored.

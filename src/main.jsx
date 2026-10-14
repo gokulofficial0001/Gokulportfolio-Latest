@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Activity,
@@ -16,11 +16,8 @@ import {
   Menu,
   MoonStar,
   Network,
-  Settings2,
   ShieldCheck,
-  Sparkles,
   SunMedium,
-  TestTube2,
   UsersRound,
   X,
 } from 'lucide-react';
@@ -31,14 +28,11 @@ const navItems = [
   ['Experience', 'experience'],
   ['Capabilities', 'capabilities'],
   ['Implementations', 'implementations'],
+  ['Skills', 'skills'],
+  ['Learning', 'learning'],
   ['Contact', 'contact'],
 ];
-
-const hideSections = {
-  caseStudy: true,
-  methodology: true,
-  roadmap: true,
-};
+const primaryNavItems = navItems.slice(0, 5);
 
 const capabilities = [
   {
@@ -125,68 +119,118 @@ const projects = [
   },
 ];
 
-const methodology = [
-  ['01', 'Discover', 'Understand the problem', 'Listen to users, clarify the operational context, and define what needs to improve.', Sparkles],
-  ['02', 'Analyze', 'Understand the requirements', 'Break down the current process, roles, information, risks, and open questions.', Activity],
-  ['03', 'Map', 'Make the workflow visible', 'Document the flow from request to completion and identify manual dependencies.', GitBranch],
-  ['04', 'Implement', 'Align the digital workflow', 'Coordinate configuration, requirements, documentation, and stakeholder decisions.', Settings2],
-  ['05', 'Validate', 'Testing + UAT', 'Perform functional checks, validate issues, and coordinate user acceptance activities.', TestTube2],
-  ['06', 'Deploy', 'Support go-live', 'Help users and delivery stakeholders move into the implemented workflow.', ArrowUpRight],
-  ['07', 'Improve', 'Support adoption', 'Track feedback, clarify issues, and identify practical opportunities for improvement.', CheckCircle2],
+const skillGroups = [
+  {
+    title: 'Healthcare systems',
+    items: ['Healthcare IT', 'Hospital Information Systems', 'Digital Health', 'Digital Transformation'],
+    tone: 'brand',
+  },
+  {
+    title: 'Workflow & analysis',
+    items: ['Workflow Analysis', 'Workflow Optimization', 'Process Digitization', 'Process Automation', 'Requirement Gathering'],
+    tone: 'slate',
+  },
+  {
+    title: 'Implementation & validation',
+    items: ['Application Implementation', 'Application Support', 'UAT', 'Functional Testing', 'Issue Tracking'],
+    tone: 'brand',
+  },
+  {
+    title: 'Stakeholder coordination',
+    items: ['Stakeholder Coordination', 'Vendor Coordination', 'Hospital Operations Technology'],
+    tone: 'slate',
+  },
+  {
+    title: 'Data & supporting skills',
+    items: ['Data Analytics', 'Excel', 'SQL', 'Power BI', 'Troubleshooting', 'Documentation'],
+    tone: 'brand',
+  },
 ];
-
-const roadmap = [
-  ['WHERE I WAS', 'Implementation Officer – Healthcare IT', 'Hands-on hospital systems and workflow implementation.', ['HIS implementation', 'Workflow validation', 'UAT and testing', 'User coordination'], 'coral'],
-  ['WHERE I AM', 'Building Healthcare IT Implementation Expertise', 'Deepening implementation, analysis, and digital workflow capability.', ['Requirement gathering', 'Process mapping', 'Issue management', 'Stakeholder coordination'], 'teal'],
-  ['STEP 1', 'Healthcare IT Implementation Specialist', 'Build stronger analytical and healthcare systems foundations.', ['Advanced Excel', 'SQL', 'Power BI', 'Business analysis', 'Agile / Scrum', 'HIS / EMR fundamentals'], 'green'],
-  ['STEP 2', 'HIS / EMR Implementation Specialist / Consultant', 'Grow into end-to-end implementation delivery.', ['Requirements engineering', 'Configuration', 'UAT and go-live', 'Change management', 'Data validation', 'HL7, FHIR, DICOM, APIs'], 'blue'],
-  ['STEP 3', 'Senior Healthcare IT / HIS Consultant', 'Lead solution thinking, clients, and multi-project delivery.', ['Solution design', 'Healthcare business analysis', 'Consulting', 'Client management', 'Process improvement', 'Mentoring'], 'purple'],
-  ['STEP 4', 'Digital Transformation Consultant / Solution Consultant / Delivery Manager', 'Contribute to larger healthcare technology programs and outcomes.', ['Digital transformation', 'Solution strategy', 'Program delivery', 'Team leadership', 'Client relationships'], 'amber'],
-];
-
-const primarySkills = [
-  'Healthcare IT Implementation',
-  'Hospital Information Systems',
-  'HIS',
-  'Digital Health',
-  'Digital Transformation',
-  'Workflow Analysis',
-  'Workflow Optimization',
-  'Process Digitization',
-  'Process Automation',
-  'Requirement Gathering',
-  'UAT',
-  'Functional Testing',
-  'Application Implementation',
-  'Application Support',
-  'Issue Tracking',
-  'Stakeholder Coordination',
-  'Vendor Coordination',
-  'Hospital Operations Technology',
-];
-
-const supportingSkills = ['Data Analytics', 'Excel', 'SQL', 'Power BI', 'Troubleshooting', 'Documentation'];
-const developmentSkills = ['HL7', 'FHIR', 'DICOM', 'Healthcare Interoperability', 'EMR / EHR', 'Healthcare Cybersecurity', 'Advanced SQL', 'Power BI', 'APIs', 'Automation', 'Agile', 'Project Management', 'Requirements Engineering'];
 
 function App() {
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => {
+    try {
+      const savedTheme = window.localStorage.getItem('portfolio-theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') return savedTheme;
+    } catch (error) {
+      console.warn('Unable to read the saved portfolio theme.', error);
+    }
+    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  });
+  const [activeSection, setActiveSection] = useState('about');
   const [formStatus, setFormStatus] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const headerRef = useRef(null);
   const isDark = theme === 'dark';
 
-  const handleSubmit = (event) => {
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('portfolio-theme', theme);
+    } catch (error) {
+      console.warn('Unable to save the portfolio theme preference.', error);
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    const sections = navItems
+      .map(([, id]) => document.getElementById(id))
+      .filter(Boolean);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleSection = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visibleSection) setActiveSection(visibleSection.target.id);
+      },
+      { rootMargin: '-90px 0px -65% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (!headerRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const subject = encodeURIComponent(`Portfolio inquiry: ${data.get('focus')}`);
-    const body = encodeURIComponent(`Name: ${data.get('name')}\nEmail: ${data.get('email')}\nFocus: ${data.get('focus')}\n\n${data.get('message')}`);
-    setFormStatus('Opening your email client with your inquiry details.');
-    window.location.href = `mailto:gokulofficial0001@gmail.com?subject=${subject}&body=${body}`;
-    event.currentTarget.reset();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    setIsSubmitting(true);
+    setFormStatus('Sending your inquiry…');
+    try {
+      const response = await fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(formData).toString(),
+      });
+      if (!response.ok) throw new Error(`Form submission failed with status ${response.status}.`);
+      setFormStatus('Thanks — your inquiry was sent successfully.');
+      form.reset();
+    } catch (error) {
+      console.error('Unable to submit the portfolio inquiry.', error);
+      setFormStatus('Your message could not be sent. Please email gokulofficial0001@gmail.com instead.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className={isDark ? 'theme-dark min-h-screen bg-slate-950 text-slate-100' : 'theme-light min-h-screen bg-slate-50 text-slate-900'}>
-      <header className={isDark ? 'fixed inset-x-0 top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-xl' : 'fixed inset-x-0 top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-xl'}>
+      <header ref={headerRef} className={isDark ? 'fixed inset-x-0 top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-xl' : 'fixed inset-x-0 top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-xl'}>
         <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 lg:px-8">
           <a href="#home" className="focus-ring flex items-center gap-3 text-sm font-bold tracking-tight" aria-label="Go to homepage">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-teal-500 font-mono text-xs text-slate-950">GS</span>
@@ -195,9 +239,14 @@ function App() {
             </span>
           </a>
 
-          <nav className={isDark ? 'hidden gap-5 text-[10px] font-bold uppercase tracking-[.1em] text-slate-300 lg:flex' : 'hidden gap-5 text-[10px] font-bold uppercase tracking-[.1em] text-slate-600 lg:flex'} aria-label="Primary navigation">
-            {navItems.map(([label, id]) => (
-              <a className="focus-ring hover:text-teal-500" href={`#${id}`} key={id}>
+          <nav className={isDark ? 'hidden gap-5 text-xs font-bold uppercase tracking-[.1em] text-slate-300 xl:flex' : 'hidden gap-5 text-xs font-bold uppercase tracking-[.1em] text-slate-600 xl:flex'} aria-label="Primary navigation">
+            {primaryNavItems.map(([label, id]) => (
+              <a
+                aria-current={activeSection === id ? 'location' : undefined}
+                className={`${activeSection === id ? 'text-teal-500' : ''} focus-ring hover:text-teal-500`}
+                href={`#${id}`}
+                key={id}
+              >
                 {label}
               </a>
             ))}
@@ -211,16 +260,16 @@ function App() {
               aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {isDark ? <SunMedium className="h-4 w-4 text-amber-300" aria-hidden="true" /> : <MoonStar className="h-4 w-4 text-indigo-500" aria-hidden="true" />}
-              <span className="hidden lg:inline">{isDark ? 'Light' : 'Dark'}</span>
+              <span className="hidden xl:inline">{isDark ? 'Light' : 'Dark'}</span>
             </button>
 
-            <a href="#contact" className="focus-ring hidden items-center gap-2 rounded-lg bg-teal-500 px-4 py-3 text-xs font-bold text-slate-950 sm:flex">
+            <a href="#contact" className="focus-ring hidden items-center gap-2 rounded-lg bg-teal-500 px-4 py-3 text-xs font-bold text-slate-950 xl:flex">
               Let’s connect <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
             </a>
           </div>
 
           <button
-            className={isDark ? 'focus-ring rounded-md p-2 lg:hidden' : 'focus-ring rounded-md p-2 text-slate-800 lg:hidden'}
+            className={isDark ? 'focus-ring rounded-md p-2 xl:hidden' : 'focus-ring rounded-md p-2 text-slate-800 xl:hidden'}
             onClick={() => setOpen(!open)}
             aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={open}
@@ -231,12 +280,21 @@ function App() {
         </div>
 
         {open && (
-          <nav id="mobile-navigation" className={isDark ? 'border-t border-slate-800 bg-slate-950 px-5 py-4 lg:hidden' : 'border-t border-slate-200 bg-white px-5 py-4 lg:hidden'} aria-label="Mobile navigation">
-            {navItems.map(([label, id]) => (
-              <a onClick={() => setOpen(false)} className={isDark ? 'focus-ring block py-3 text-sm font-bold text-slate-100' : 'focus-ring block py-3 text-sm font-bold text-slate-800'} href={`#${id}`} key={id}>
+          <nav id="mobile-navigation" className={isDark ? 'border-t border-slate-800 bg-slate-950 px-5 py-4 xl:hidden' : 'border-t border-slate-200 bg-white px-5 py-4 xl:hidden'} aria-label="Mobile navigation">
+            {primaryNavItems.map(([label, id]) => (
+              <a
+                aria-current={activeSection === id ? 'location' : undefined}
+                onClick={() => setOpen(false)}
+                className={`${isDark ? 'text-slate-100' : 'text-slate-800'} ${activeSection === id ? 'text-teal-500' : ''} focus-ring block py-3 text-sm font-bold`}
+                href={`#${id}`}
+                key={id}
+              >
                 {label}
               </a>
             ))}
+            <a onClick={() => setOpen(false)} href="#contact" className="focus-ring mt-2 inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-3 text-sm font-bold text-slate-950">
+              Let’s connect <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            </a>
           </nav>
         )}
       </header>
@@ -253,17 +311,17 @@ function App() {
           </div>
           <div className="relative mx-auto max-w-7xl px-5 py-10 sm:py-20 lg:px-8 lg:py-28">
             <div className="max-w-5xl">
-              <div className={isDark ? 'mb-7 inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-3 py-2 text-[10px] font-bold uppercase tracking-[.18em] text-teal-700 shadow-sm' : 'mb-7 inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-3 py-2 text-[10px] font-bold uppercase tracking-[.18em] text-teal-700 shadow-sm'}>
+              <div className={isDark ? 'mb-7 inline-flex items-center gap-3 rounded-full border border-teal-800 bg-teal-950 px-3 py-2 text-xs font-bold uppercase tracking-[.18em] text-teal-200 shadow-sm' : 'mb-7 inline-flex items-center gap-3 rounded-full border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-bold uppercase tracking-[.18em] text-teal-700 shadow-sm'}>
                 <span className="h-2 w-2 rounded-full bg-teal-500" aria-hidden="true" />
                 Open to healthcare IT opportunities
               </div>
 
-              <p className={isDark ? 'mb-6 font-mono text-[9px] tracking-[.16em] text-teal-300' : 'mb-6 font-mono text-[9px] tracking-[.16em] text-teal-600'}>HEALTHCARE IT IMPLEMENTATION · GKNM HOSPITAL · COIMBATORE</p>
+              <p className={isDark ? 'mb-6 font-mono text-xs tracking-[.16em] text-teal-300' : 'mb-6 font-mono text-xs tracking-[.16em] text-teal-600'}>HEALTHCARE IT IMPLEMENTATION · GKNM HOSPITAL · COIMBATORE</p>
               <h1 id="hero-title" className={isDark ? 'text-4xl font-bold leading-[1.02] tracking-[-.055em] text-white sm:text-6xl lg:text-[68px]' : 'text-4xl font-bold leading-[1.02] tracking-[-.055em] text-slate-900 sm:text-6xl lg:text-[68px]'}>
-                Healthcare IT <span className={isDark ? 'font-serif font-normal italic tracking-[-.04em] text-teal-300' : 'font-serif font-normal italic tracking-[-.04em] text-teal-600'}>Implementation.</span>
+                Gokulraj Sakthivel
               </h1>
               <p className={isDark ? 'mt-6 max-w-xl text-base leading-7 text-slate-300' : 'mt-6 max-w-xl text-base leading-7 text-slate-600'}>
-                Transforming hospital operations into practical digital workflows through implementation, workflow validation, process digitization, and technology-driven improvement.
+                I turn hospital workflows into reliable digital systems through implementation, workflow validation, process digitization, and user-focused delivery.
               </p>
 
               <div className="mt-8 flex max-w-2xl flex-wrap gap-2">
@@ -292,8 +350,16 @@ function App() {
           </div>
         </section>
 
-        <section id="about" className={isDark ? 'mx-auto grid max-w-7xl gap-10 px-5 py-24 lg:grid-cols-[.8fr_2fr] lg:px-8 lg:py-32' : 'mx-auto grid max-w-7xl gap-10 px-5 py-24 lg:grid-cols-[.8fr_2fr] lg:px-8 lg:py-32'}>
-          <Label n="01" t="ABOUT" />
+        <section id="metrics" className={isDark ? 'border-b border-slate-800 bg-slate-950 px-5 py-12 lg:px-8' : 'border-b border-slate-200 bg-white px-5 py-12 lg:px-8'}>
+          <div className="mx-auto grid max-w-7xl gap-6 sm:grid-cols-3">
+            <Metric value="05" label="Hospital implementation initiatives" isDark={isDark} />
+            <Metric value="01" label="Flagship HIS implementation" isDark={isDark} />
+            <Metric value="50+" label="Users trained across the hospital" isDark={isDark} />
+          </div>
+        </section>
+
+        <section id="about" className="mx-auto grid max-w-7xl gap-10 px-5 py-24 lg:grid-cols-[.8fr_2fr] lg:px-8 lg:py-32">
+          <Label n="01" t="ABOUT" isDark={isDark} />
           <div>
             <h2 className={isDark ? 'max-w-3xl text-4xl font-bold leading-[1.05] tracking-[-.055em] text-white sm:text-5xl' : 'max-w-3xl text-4xl font-bold leading-[1.05] tracking-[-.055em] text-slate-900 sm:text-5xl'}>
               Hospital operations, translated into <span className={isDark ? 'font-serif font-normal italic text-teal-300' : 'font-serif font-normal italic text-teal-600'}>usable systems.</span>
@@ -350,7 +416,7 @@ function App() {
                 <article className={isDark ? 'rounded-lg border border-slate-700 bg-slate-900 p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl' : 'rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl'} key={title}>
                   <div className="flex items-center justify-between">
                     <Icon className={isDark ? 'h-7 w-7 text-teal-300' : 'h-7 w-7 text-teal-600'} aria-hidden="true" />
-                    <span className={isDark ? 'font-mono text-xs text-slate-400' : 'font-mono text-xs text-slate-400'}>0{index + 1}</span>
+                    <span className={isDark ? 'font-mono text-xs text-slate-400' : 'font-mono text-xs text-slate-500'}>0{index + 1}</span>
                   </div>
                   <h3 className={isDark ? 'mt-10 text-2xl font-bold tracking-tight text-white' : 'mt-10 text-2xl font-bold tracking-tight text-slate-900'}>{title}</h3>
                   <p className={isDark ? 'mt-4 text-sm leading-6 text-slate-300' : 'mt-4 text-sm leading-6 text-slate-600'}>{text}</p>
@@ -380,108 +446,19 @@ function App() {
           </div>
         </section>
 
-        <section id="metrics" className={isDark ? 'border-b border-slate-800 bg-slate-950 px-5 py-16 lg:px-8' : 'border-b border-slate-200 bg-white px-5 py-16 lg:px-8'}>
-          <div className="mx-auto grid max-w-7xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric value="05+" label="Systems / implementation initiatives" isDark={isDark} />
-            <Metric value="01" label="Flagship HIS implementation" isDark={isDark} />
-            <Metric value="Multiple" label="Hospital workflow digitization initiatives" isDark={isDark} />
-            <Metric value="50+" label="Users trained across the hospital" isDark={isDark} />
-          </div>
-        </section>
-
-        {!hideSections.caseStudy && (
-          <section id="case-study" className="mx-auto max-w-7xl px-5 py-24 lg:px-8 lg:py-32">
-            <Label n="05" t="FEATURED HIS CASE STUDY" />
-            <div className="grid gap-14 lg:grid-cols-[.85fr_1.15fr]">
-              <div>
-                <p className={isDark ? 'font-mono text-[10px] tracking-[.14em] text-teal-300' : 'font-mono text-[10px] tracking-[.14em] text-teal-600'}>HOSPITAL INFORMATION SYSTEM</p>
-                <h2 className={isDark ? 'mt-4 text-4xl font-bold leading-[1.05] tracking-[-.055em] text-white sm:text-5xl' : 'mt-4 text-4xl font-bold leading-[1.05] tracking-[-.055em] text-slate-900 sm:text-5xl'}>Implementation decisions for a high-dependency hospital workflow.</h2>
-                <p className={isDark ? 'mt-7 text-lg leading-8 text-slate-300' : 'mt-7 text-lg leading-8 text-slate-600'}>A generalized, non-confidential view of the work: understand the operational context, translate requirements into system behaviour, validate workflows with users, and support adoption through deployment.</p>
-
-                <div className="mt-8 grid gap-3">
-                  {[
-                    'Operational context: hospital users depend on clear, reliable digital workflows',
-                    'Problem framing: identify workflow gaps before they become implementation issues',
-                    'Stakeholders: hospital users, operational teams, vendors, and application stakeholders',
-                    'My role: requirement understanding, workflow validation, testing, UAT, and issue coordination',
-                    'Decision lens: balance workflow fit, implementation readiness, and user adoption',
-                    'Delivery: functional testing, issue and bug validation, go-live and post-implementation support',
-                    'Evidence: [ADD VERIFIED adoption, efficiency, quality, or issue-resolution measures]',
-                    'Constraints: [ADD VERIFIED workflow, data, integration, or compliance constraints]',
-                    'Reflection: [ADD a real trade-off, challenge, or change you would make next time]',
-                  ].map((item, index) => (
-                    <div className={isDark ? 'flex items-center gap-3 border-b border-slate-700 py-3 text-sm text-slate-200' : 'flex items-center gap-3 border-b border-slate-200 py-3 text-sm text-slate-700'} key={item}>
-                      <span className={isDark ? 'font-mono text-xs text-teal-300' : 'font-mono text-xs text-teal-600'}>{String(index + 1).padStart(2, '0')}</span>
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className={isDark ? 'rounded-lg bg-slate-900 p-6 text-white sm:p-8' : 'rounded-lg bg-slate-100 p-6 text-slate-900 sm:p-8'}>
-                <p className={isDark ? 'font-mono text-[10px] tracking-[.14em] text-teal-200' : 'font-mono text-[10px] tracking-[.14em] text-teal-600'}>IMPLEMENTATION LIFECYCLE</p>
-                <div className="mt-8 grid gap-0">
-                  {[
-                    ['DISCOVER', 'Clarify the operational problem and success criteria'],
-                    ['MAP', 'Validate current workflows, roles, dependencies, and exceptions'],
-                    ['ALIGN', 'Translate requirements into decisions with users and delivery stakeholders'],
-                    ['VALIDATE', 'Test functionality, validate issues, and coordinate UAT'],
-                    ['DEPLOY', 'Support go-live readiness, escalation, and user coordination'],
-                    ['ADOPT', 'Help users move from workflow change to consistent system use'],
-                    ['IMPROVE', 'Capture feedback and identify the next practical improvement'],
-                  ].map(([title, text], index) => (
-                    <div className={isDark ? 'flex gap-4 border-l border-teal-400/40 pb-7 pl-5 last:pb-0' : 'flex gap-4 border-l border-teal-200 pb-7 pl-5 last:pb-0'} key={title}>
-                      <span className={isDark ? '-ml-[31px] grid h-6 w-6 shrink-0 place-items-center rounded-full bg-teal-400 font-mono text-[10px] font-bold text-slate-950' : '-ml-[31px] grid h-6 w-6 shrink-0 place-items-center rounded-full bg-teal-500 font-mono text-[10px] font-bold text-white'}>{index + 1}</span>
-                      <div>
-                        <p className={isDark ? 'font-mono text-[10px] tracking-[.12em] text-teal-100' : 'font-mono text-[10px] tracking-[.12em] text-teal-700'}>{title}</p>
-                        <p className={isDark ? 'mt-2 text-sm leading-6 text-slate-300' : 'mt-2 text-sm leading-6 text-slate-600'}>{text}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className={isDark ? 'mt-8 border-l-2 border-teal-400 bg-slate-950/70 p-5' : 'mt-8 border-l-2 border-teal-600 bg-white p-5 shadow-sm'}>
-                  <p className={isDark ? 'font-mono text-[10px] tracking-[.14em] text-teal-200' : 'font-mono text-[10px] tracking-[.14em] text-teal-700'}>SENIOR-LEVEL SIGNAL</p>
-                  <p className={isDark ? 'mt-3 text-sm leading-6 text-slate-300' : 'mt-3 text-sm leading-6 text-slate-600'}>This work is not presented as screen delivery alone. It demonstrates systems thinking: connecting hospital workflows, user readiness, validation quality, vendor coordination, and the practical realities of implementation.</p>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {!hideSections.methodology && (
-          <section id="methodology" className={isDark ? 'border-y border-slate-800 bg-slate-900/90 px-5 py-24 lg:px-8 lg:py-32' : 'border-y border-slate-200 bg-slate-100 px-5 py-24 lg:px-8 lg:py-32'}>
-            <div className="mx-auto max-w-7xl">
-              <Label n="06" t="HOW I APPROACH IMPLEMENTATION" isDark={isDark} />
-              <div className="max-w-3xl">
-                <h2 className={isDark ? 'text-4xl font-bold leading-[1.05] tracking-[-.055em] text-white sm:text-5xl' : 'text-4xl font-bold leading-[1.05] tracking-[-.055em] text-slate-900 sm:text-5xl'}>A repeatable path from discovery to improvement.</h2>
-              </div>
-              <div className={isDark ? 'mt-12 grid gap-px overflow-hidden rounded-lg bg-slate-700 sm:grid-cols-2 lg:grid-cols-4' : 'mt-12 grid gap-px overflow-hidden rounded-lg bg-slate-200 sm:grid-cols-2 lg:grid-cols-4'}>
-                {methodology.map(([number, title, text, activity, Icon]) => (
-                  <article className={isDark ? 'bg-slate-900 p-6' : 'bg-white p-6'} key={title}>
-                    <Icon className={isDark ? 'h-6 w-6 text-teal-300' : 'h-6 w-6 text-teal-600'} aria-hidden="true" />
-                    <p className={isDark ? 'mt-8 font-mono text-[10px] text-teal-300' : 'mt-8 font-mono text-[10px] text-teal-600'}>{number}</p>
-                    <h3 className={isDark ? 'mt-2 text-xl font-bold text-white' : 'mt-2 text-xl font-bold text-slate-900'}>{title}</h3>
-                    <p className={isDark ? 'mt-3 text-sm font-semibold text-slate-200' : 'mt-3 text-sm font-semibold text-slate-700'}>{text}</p>
-                    <p className={isDark ? 'mt-2 text-sm leading-6 text-slate-400' : 'mt-2 text-sm leading-6 text-slate-500'}>{activity}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
         <section id="skills" className="mx-auto max-w-7xl px-5 py-24 lg:px-8 lg:py-32">
-          <Label n="07" t="SKILLS MATRIX" isDark={isDark} />
-          <div className="grid gap-12 lg:grid-cols-[1fr_1fr]">
-            <SkillGroup title="Primary capabilities" items={primarySkills} tone="brand" isDark={isDark} />
-            <SkillGroup title="Supporting skills" items={supportingSkills} tone="slate" isDark={isDark} />
+          <Label n="05" t="SKILLS MATRIX" isDark={isDark} />
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+            {skillGroups.map(({ title, items, tone }) => (
+              <SkillGroup title={title} items={items} tone={tone} isDark={isDark} key={title} />
+            ))}
           </div>
 
         </section>
 
         <section id="learning" className={isDark ? 'bg-slate-950/80 px-5 py-24 lg:px-8 lg:py-32' : 'bg-slate-100 px-5 py-24 lg:px-8 lg:py-32'}>
           <div className="mx-auto max-w-7xl">
-            <Label n="08" t="LEARNING & DEVELOPMENT" isDark={isDark} />
+            <Label n="06" t="LEARNING & DEVELOPMENT" isDark={isDark} />
             <div className="grid gap-12 lg:grid-cols-[1.3fr_.7fr]">
               <div>
                 <h2 className={isDark ? 'text-3xl font-bold tracking-tight text-white' : 'text-3xl font-bold tracking-tight text-slate-900'}>Learning that supports delivery.</h2>
@@ -511,58 +488,23 @@ function App() {
                 <article className={isDark ? 'mt-10 border-l-2 border-slate-600 pl-5' : 'mt-10 border-l-2 border-slate-300 pl-5'}>
                   <p className={isDark ? 'font-mono text-[10px] tracking-[.12em] text-slate-400' : 'font-mono text-[10px] tracking-[.12em] text-slate-500'}>SUPPORTING LEADERSHIP</p>
                   <h3 className={isDark ? 'mt-3 text-xl font-bold text-white' : 'mt-3 text-xl font-bold text-slate-900'}>Technical mentoring</h3>
-                  <p className={isDark ? 'mt-3 text-sm leading-6 text-slate-300' : 'mt-3 text-sm leading-6 text-slate-600'}>Guided approximately 25 trainees in practical networking and deployment-related training activities.</p>
+                  <p className={isDark ? 'mt-3 text-sm leading-6 text-slate-300' : 'mt-3 text-sm leading-6 text-slate-600'}>Trained 50+ hospital users in system workflows and practical application use.</p>
                 </article>
               </div>
             </div>
           </div>
         </section>
 
-        {!hideSections.roadmap && (
-          <section id="roadmap" className={isDark ? 'bg-slate-950 px-5 py-24 text-white lg:px-8 lg:py-32' : 'bg-white px-5 py-24 text-slate-900 lg:px-8 lg:py-32'}>
-            <div className="mx-auto max-w-7xl">
-              <Label n="09" t="CAREER ROADMAP" isDark={isDark} />
-              <div className="max-w-3xl">
-                <h2 className={isDark ? 'text-4xl font-bold leading-[1.05] tracking-[-.055em] text-white sm:text-5xl' : 'text-4xl font-bold leading-[1.05] tracking-[-.055em] text-slate-900 sm:text-5xl'}>Building toward HIS/EMR consulting and digital transformation.</h2>
-                <p className={isDark ? 'mt-6 text-lg leading-8 text-slate-300' : 'mt-6 text-lg leading-8 text-slate-600'}>A direction for continued growth, grounded in implementation experience and expanded healthcare technology capability.</p>
-              </div>
-              <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {roadmap.map(([label, title, focus, skills, color], index) => (
-                  <article className={isDark ? `roadmap-card roadmap-${color} rounded-lg border bg-slate-900 p-5` : `roadmap-card roadmap-${color} rounded-lg border bg-white p-5`} key={label}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className={isDark ? 'font-mono text-[10px] font-bold tracking-[.12em] text-slate-200' : 'font-mono text-[10px] font-bold tracking-[.12em] text-slate-800'}>{label}</p>
-                        <p className={isDark ? 'mt-1 text-xs font-semibold text-slate-400' : 'mt-1 text-xs font-semibold text-slate-500'}>{index === 0 ? 'Starting point' : index === 1 ? 'Current direction' : `Development stage ${index - 1}`}</p>
-                      </div>
-                      <span className="roadmap-marker grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-xs font-bold text-white">{index + 1}</span>
-                    </div>
-                    <h3 className={isDark ? 'mt-6 text-xl font-bold leading-tight text-white' : 'mt-6 text-xl font-bold leading-tight text-slate-900'}>{title}</h3>
-                    <p className={isDark ? 'mt-3 text-sm leading-6 text-slate-300' : 'mt-3 text-sm leading-6 text-slate-600'}>{focus}</p>
-                    <ul className={isDark ? 'mt-5 space-y-2 border-t border-slate-700 pt-4 text-sm leading-5 text-slate-200' : 'mt-5 space-y-2 border-t border-slate-200 pt-4 text-sm leading-5 text-slate-700'}>
-                      {skills.map((skill) => (
-                        <li className="flex gap-2" key={skill}>
-                          <span aria-hidden="true">•</span>
-                          <span>{skill}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
         <section id="resume" className="mx-auto max-w-7xl px-5 py-24 lg:px-8 lg:py-32">
-          <Label n="10" t="RESUME" isDark={isDark} />
+          <Label n="07" t="RESUME" isDark={isDark} />
           <div className={isDark ? 'flex flex-col justify-between gap-8 rounded-lg border border-slate-800 bg-slate-900/80 p-7 sm:flex-row sm:items-center sm:p-10' : 'flex flex-col justify-between gap-8 rounded-lg border border-slate-200 bg-white p-7 sm:flex-row sm:items-center sm:p-10'}>
             <div>
               <h2 className={isDark ? 'text-3xl font-bold tracking-tight text-white' : 'text-3xl font-bold tracking-tight text-slate-900'}>Professional profile and résumé.</h2>
-              <p className={isDark ? 'mt-3 max-w-xl text-slate-300' : 'mt-3 max-w-xl text-slate-600'}>A full résumé can be shared on request. The current portfolio is structured to present my experience, capability, and delivery focus clearly.</p>
+              <p className={isDark ? 'mt-3 max-w-xl text-slate-300' : 'mt-3 max-w-xl text-slate-600'}>Download my résumé for a detailed overview of my experience, capabilities, and delivery focus.</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <a href="mailto:gokulofficial0001@gmail.com?subject=Resume%20Request" className="focus-ring inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-3 text-sm font-bold text-slate-950">
-                Request résumé <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+              <a href="/Gokulraj_Implementation_Executive.docx" download className="focus-ring inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-3 text-sm font-bold text-slate-950">
+                Download résumé <FileText className="h-4 w-4" aria-hidden="true" />
               </a>
               <a href="#contact" className={isDark ? 'focus-ring inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-100' : 'focus-ring inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900'}>
                 Contact me <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -574,7 +516,7 @@ function App() {
         <section id="contact" className={isDark ? 'bg-slate-900 px-5 py-24 lg:px-8 lg:py-32' : 'bg-slate-100 px-5 py-24 lg:px-8 lg:py-32'}>
           <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-[.9fr_1.1fr]">
             <div>
-              <Label n="11" t="CONTACT" isDark={isDark} />
+              <Label n="08" t="CONTACT" isDark={isDark} />
               <h2 className={isDark ? 'text-4xl font-bold leading-[1.05] tracking-[-.055em] text-white sm:text-5xl' : 'text-4xl font-bold leading-[1.05] tracking-[-.055em] text-slate-900 sm:text-5xl'}>Let’s connect.</h2>
               <p className={isDark ? 'mt-7 max-w-lg text-lg leading-8 text-slate-300' : 'mt-7 max-w-lg text-lg leading-8 text-slate-600'}>Healthcare IT | HIS | Digital Health | Implementation | Transformation</p>
               <div className={isDark ? 'mt-10 flex flex-col gap-4 border-t border-teal-200 pt-6 text-sm font-bold text-slate-300 sm:flex-row sm:items-center sm:gap-6' : 'mt-10 flex flex-col gap-4 border-t border-slate-200 pt-6 text-sm font-bold text-slate-600 sm:flex-row sm:items-center sm:gap-6'}>
@@ -588,26 +530,27 @@ function App() {
               </div>
             </div>
 
-            <form className={isDark ? 'rounded-lg border border-slate-700 bg-slate-950 p-6 shadow-xl shadow-teal-900/5 sm:p-8' : 'rounded-lg border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/70 sm:p-8'} onSubmit={handleSubmit}>
+            <form name="contact" method="POST" data-netlify="true" className={isDark ? 'rounded-lg border border-slate-700 bg-slate-950 p-6 shadow-xl shadow-teal-900/5 sm:p-8' : 'rounded-lg border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/70 sm:p-8'} onSubmit={handleSubmit}>
+              <input type="hidden" name="form-name" value="contact" />
               <p className={isDark ? 'font-mono text-[10px] tracking-[.12em] text-slate-400' : 'font-mono text-[10px] tracking-[.12em] text-slate-500'}>START A CONVERSATION</p>
               <h3 className={isDark ? 'mt-3 text-2xl font-bold text-white' : 'mt-3 text-2xl font-bold text-slate-900'}>Professional inquiry</h3>
               <div className="mt-8 grid gap-5 sm:grid-cols-2">
                 <Input l="FULL NAME" p="Your name" name="name" required isDark={isDark} />
-                <Input l="CORPORATE EMAIL" p="name@company.com" name="email" type="email" required isDark={isDark} />
+                <Input l="YOUR EMAIL" p="you@example.com" name="email" type="email" required isDark={isDark} />
                 <label className="sm:col-span-2">
                   <span className={isDark ? 'mb-2 block font-mono text-[10px] tracking-[.11em] text-slate-400' : 'mb-2 block font-mono text-[10px] tracking-[.11em] text-slate-500'}>OPPORTUNITY FOCUS</span>
-                  <input name="focus" placeholder="Implementation, digital health..." className={isDark ? 'focus-ring w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-slate-100 outline-none placeholder:text-slate-400' : 'focus-ring w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none placeholder:text-slate-400'} required />
+                  <input name="focus" placeholder="Implementation, digital health..." className={isDark ? 'focus-ring w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-slate-100 outline-none placeholder:text-slate-400' : 'focus-ring w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none placeholder:text-slate-500'} required />
                 </label>
                 <label className="sm:col-span-2">
                   <span className={isDark ? 'mb-2 block font-mono text-[10px] tracking-[.11em] text-slate-400' : 'mb-2 block font-mono text-[10px] tracking-[.11em] text-slate-500'}>MESSAGE</span>
-                  <textarea name="message" rows="5" placeholder="Tell me what you would like to discuss..." className={isDark ? 'focus-ring w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-slate-100 outline-none placeholder:text-slate-400' : 'focus-ring w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none placeholder:text-slate-400'} required />
+                  <textarea name="message" rows="5" placeholder="Tell me what you would like to discuss..." className={isDark ? 'focus-ring w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-slate-100 outline-none placeholder:text-slate-400' : 'focus-ring w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none placeholder:text-slate-500'} required />
                 </label>
               </div>
               <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <button type="submit" className={isDark ? 'focus-ring rounded-lg bg-teal-500 px-5 py-3 text-sm font-bold text-slate-950' : 'focus-ring rounded-lg bg-slate-900 px-5 py-3 text-sm font-bold text-white'}>
-                  Send inquiry
+                <button type="submit" disabled={isSubmitting} className={isDark ? 'focus-ring rounded-lg bg-teal-500 px-5 py-3 text-sm font-bold text-slate-950 disabled:cursor-wait disabled:opacity-60' : 'focus-ring rounded-lg bg-slate-900 px-5 py-3 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60'}>
+                  {isSubmitting ? 'Sending…' : 'Send inquiry'}
                 </button>
-                {formStatus && <p className={isDark ? 'text-sm text-teal-300' : 'text-sm text-teal-700'}>{formStatus}</p>}
+                {formStatus && <p role="status" aria-live="polite" className={isDark ? 'text-sm text-teal-300' : 'text-sm text-teal-700'}>{formStatus}</p>}
               </div>
             </form>
           </div>
@@ -620,7 +563,21 @@ function App() {
             <p className={isDark ? 'font-bold text-white' : 'font-bold text-slate-900'}>GokulRaj Sakthivel</p>
             <p className={isDark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>Healthcare IT Implementation</p>
           </div>
-          <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>HIS · Digital Transformation · Workflow Optimization · Process Automation</p>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2">
+              <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>HIS · Digital Transformation · Workflow Optimization · Process Automation</p>
+              <div className="flex flex-wrap gap-4">
+                <a className={isDark ? 'focus-ring hover:text-teal-300' : 'focus-ring hover:text-teal-700'} href="mailto:gokulofficial0001@gmail.com">Email</a>
+                <a className={isDark ? 'focus-ring hover:text-teal-300' : 'focus-ring hover:text-teal-700'} href="https://www.linkedin.com/in/gokulraj-sakthivel-97b3b2275" target="_blank" rel="noreferrer">LinkedIn</a>
+                <span>© {new Date().getFullYear()} Gokulraj Sakthivel</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <a className={isDark ? 'focus-ring hover:text-teal-300' : 'focus-ring hover:text-teal-700'} href="mailto:gokulofficial0001@gmail.com">Email</a>
+              <a className={isDark ? 'focus-ring hover:text-teal-300' : 'focus-ring hover:text-teal-700'} href="https://www.linkedin.com/in/gokulraj-sakthivel-97b3b2275" target="_blank" rel="noreferrer">LinkedIn</a>
+              <span>© {new Date().getFullYear()} Gokulraj Sakthivel</span>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
@@ -636,10 +593,10 @@ function ProjectCard({ project, featured, isDark }) {
           <Icon className={isDark ? 'h-6 w-6 text-teal-300' : 'h-6 w-6 text-teal-600'} aria-hidden="true" />
           <span className={isDark ? 'font-mono text-xs text-teal-200' : 'font-mono text-xs text-teal-700'}>{project.number}</span>
         </div>
-        <span className={isDark ? 'rounded-full border border-teal-400/40 px-3 py-1 font-mono text-[9px] tracking-[.1em] text-teal-200' : 'rounded-full border border-teal-200 px-3 py-1 font-mono text-[9px] tracking-[.1em] text-teal-700'}>{project.status}</span>
+        <span className={isDark ? 'rounded-full border border-teal-400/40 px-3 py-1 font-mono text-xs tracking-[.1em] text-teal-200' : 'rounded-full border border-teal-200 px-3 py-1 font-mono text-xs tracking-[.1em] text-teal-700'}>{project.status}</span>
       </div>
       <h3 className={isDark ? 'mt-8 text-2xl font-bold text-white' : 'mt-8 text-2xl font-bold text-slate-900'}>{project.title}</h3>
-      <p className={isDark ? 'mt-2 font-mono text-[10px] tracking-[.12em] text-slate-400' : 'mt-2 font-mono text-[10px] tracking-[.12em] text-slate-500'}>{project.category}</p>
+      <p className={isDark ? 'mt-2 font-mono text-xs tracking-[.12em] text-slate-400' : 'mt-2 font-mono text-xs tracking-[.12em] text-slate-500'}>{project.category}</p>
       <div className={isDark ? 'mt-7 grid gap-6 text-sm leading-6 text-slate-300 sm:grid-cols-2' : 'mt-7 grid gap-6 text-sm leading-6 text-slate-700 sm:grid-cols-2'}>
         <div>
           <p className={isDark ? 'font-mono text-[10px] text-teal-200' : 'font-mono text-[10px] text-teal-700'}>PROBLEM</p>
@@ -673,23 +630,6 @@ function SkillGroup({ title, items, tone, isDark }) {
   );
 }
 
-function SkillPanel({ title, text, items, isDark }) {
-  return (
-    <article className={isDark ? 'rounded-lg border border-slate-700 bg-slate-900 p-5' : 'rounded-lg border border-slate-200 bg-slate-50 p-5'}>
-      <h3 className={isDark ? 'text-xl font-bold text-white' : 'text-xl font-bold text-slate-900'}>{title}</h3>
-      <p className={isDark ? 'mt-2 text-sm leading-6 text-slate-300' : 'mt-2 text-sm leading-6 text-slate-500'}>{text}</p>
-      <div className="mt-5 space-y-2">
-        {items.map((item) => (
-          <p className={isDark ? 'flex gap-2 text-sm text-slate-200' : 'flex gap-2 text-sm text-slate-700'} key={item}>
-            <span className={isDark ? 'text-teal-300' : 'text-teal-600'}>+</span>
-            {item}
-          </p>
-        ))}
-      </div>
-    </article>
-  );
-}
-
 function Label({ n, t, isDark }) {
   return (
     <p className={isDark ? 'mb-8 flex items-center gap-3 font-mono text-[10px] tracking-[.15em] text-slate-400' : 'mb-8 flex items-center gap-3 font-mono text-[10px] tracking-[.15em] text-slate-500'}>
@@ -713,7 +653,7 @@ function Metric({ value, label, isDark }) {
   return (
     <div className={isDark ? 'border-l-2 border-teal-300 pl-4' : 'border-l-2 border-teal-600 pl-4'}>
       <p className={isDark ? 'text-3xl font-bold tracking-tight text-white' : 'text-3xl font-bold tracking-tight text-slate-900'}>{value}</p>
-      <p className={isDark ? 'mt-1 text-xs leading-5 text-slate-400' : 'mt-1 text-xs leading-5 text-slate-500'}>{label}</p>
+      <p className={isDark ? 'mt-1 text-xs leading-5 text-slate-400' : 'mt-1 text-xs leading-5 text-slate-600'}>{label}</p>
     </div>
   );
 }
@@ -722,7 +662,7 @@ function Input({ l, p, name, type = 'text', required = false, isDark = false }) 
   return (
     <label>
       <span className={isDark ? 'mb-2 block font-mono text-[10px] tracking-[.11em] text-slate-400' : 'mb-2 block font-mono text-[10px] tracking-[.11em] text-slate-500'}>{l}</span>
-      <input name={name} type={type} placeholder={p} required={required} className={isDark ? 'focus-ring w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-slate-100 outline-none placeholder:text-slate-400' : 'focus-ring w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none placeholder:text-slate-400'} />
+      <input name={name} type={type} placeholder={p} required={required} className={isDark ? 'focus-ring w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-slate-100 outline-none placeholder:text-slate-400' : 'focus-ring w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none placeholder:text-slate-500'} />
     </label>
   );
 }
